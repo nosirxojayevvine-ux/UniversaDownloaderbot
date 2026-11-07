@@ -6,6 +6,7 @@ import threading
 import logging
 import tempfile
 import shutil
+import requests
 
 import telebot
 from telebot import types
@@ -452,14 +453,51 @@ URL_RE = re.compile(
 
 def extract_url(text):
     match = URL_RE.search(text or "")
-
     if not match:
         return None
-
     return match.group(0).rstrip(".,!?)]}")
 
 
+def download_youtube_via_api(url, workdir):
+    """YouTube uchun maxsus Cobalt API orqali video yuklash (Render IP bloklanishini chetlab o'tadi)"""
+    api_url = "https://co.wuk.sh/api/json"
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "url": url,
+        "vQuality": "720"
+    }
+    
+    response = requests.post(api_url, json=data, headers=headers, timeout=30)
+    res_json = response.json()
+    
+    if res_json.get("status") == "redirect" or res_json.get("status") == "stream":
+        download_link = res_json.get("url")
+    elif res_json.get("status") == "picker":
+        download_link = res_json.get("picker")[0].get("url")
+    else:
+        raise Exception("API YouTube havolasini o'qiy olmadi")
+        
+    # Videoni vaqtinchalik papkaga yuklab olish
+    file_path = os.path.join(workdir, "youtube_video.mp4")
+    with requests.get(download_link, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        with open(file_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+                
+    info = {"title": "YouTube Video"}
+    return file_path, info
+
+
 def download_media(url, workdir):
+    # Agar havola YouTube bo'lsa, maxsus API orqali tortamiz
+    if "youtube.com" in url or "youtu.be" in url:
+        return download_youtube_via_api(url, workdir)
+
+    # Qolgan tarmoqlar uchun yt-dlp ishlatamiz
     output_template = os.path.join(
         workdir,
         "%(title).80s-%(id)s.%(ext)s"
@@ -476,12 +514,6 @@ def download_media(url, workdir):
         "socket_timeout": 25,
         "retries": 3,
         "fragment_retries": 3,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "web"],
-                "skip": ["dash", "hls"]
-            }
-        },
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         }
@@ -812,74 +844,4 @@ INVITE_RE = re.compile(
         m.text or m.caption
     ) and bool(
         INVITE_RE.search(
-            m.text or m.caption or ""
-        )
-    ),
-    content_types=[
-        "text",
-        "photo",
-        "video",
-        "document"
-    ]
-)
-def remove_invite_ads(message):
-    if message.chat.type not in (
-        "group",
-        "supergroup"
-    ):
-        return
-
-    try:
-        bot.delete_message(
-            message.chat.id,
-            message.message_id
-        )
-    except Exception as error:
-        logging.warning(
-            "Could not remove invite link: %s",
-            error
-        )
-
-
-# =============== FLASK ===============
-
-@app.route("/")
-def home():
-    return "Universal Downloader Bot is running!"
-
-
-@app.route("/health")
-def health():
-    return {
-        "status": "ok"
-    }
-
-
-# =============== ISHGA TUSHIRISH ===============
-
-if __name__ == "__main__":
-    setup_db()
-
-    def polling():
-        while True:
-            try:
-                bot.infinity_polling(
-                    skip_pending=True,
-                    timeout=30,
-                    long_polling_timeout=30
-                )
-            except Exception:
-                logging.exception(
-                    "Telegram polling stopped. Restarting..."
-                )
-                time.sleep(5)
-
-    threading.Thread(
-        target=polling,
-        daemon=True
-    ).start()
-
-    app.run(
-        host="0.0.0.0",
-        port=PORT
-    )
+            
