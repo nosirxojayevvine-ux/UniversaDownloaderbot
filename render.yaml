@@ -1,0 +1,11 @@
+
+services:
+  - type: web
+    name: universal-downloader-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
