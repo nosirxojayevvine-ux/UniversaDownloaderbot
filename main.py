@@ -214,3 +214,60 @@ def language_keyboard():
     kb.add(
         types.InlineKeyboardButton("🇺🇿 O'zbekcha", callback_data="lang_uz"),
         types.InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
+        types.InlineKeyboardButton("🇬🇧 English", callback_data="lang_en"),
+        types.InlineKeyboardButton("🇸🇦 العربية", callback_data="lang_ar")
+    )
+
+    return kb
+
+
+def main_keyboard(lang):
+    kb = types.InlineKeyboardMarkup(row_width=1)
+
+    username = bot.get_me().username
+
+    kb.add(
+        types.InlineKeyboardButton(
+            TEXT[lang]["group"],
+            url=f"https://t.me/{username}?startgroup=true"
+        )
+    )
+
+    kb.add(
+        types.InlineKeyboardButton(
+            TEXT[lang]["language"],
+            callback_data="change_language"
+        )
+    )
+
+    return kb
+
+
+def post_download_keyboard():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+
+    username = bot.get_me().username
+
+    kb.add(
+        types.InlineKeyboardButton(
+            "➕ Guruhga qo‘shish",
+            url=f"https://t.me/{username}?startgroup=true"
+        )
+    )
+
+    return kb
+
+
+def format_keyboard():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+
+    kb.add(
+        types.InlineKeyboardButton(
+            "🎬 Video",
+            callback_data="format_video"
+        ),
+        types.InlineKeyboardButton(
+            "📁 MP4",
+            callback_data="format_mp4"
+        )
+    
