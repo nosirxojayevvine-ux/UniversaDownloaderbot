@@ -270,4 +270,89 @@ def download_media(url, workdir):
     output_template = os.path.join(workdir, "%(title).80s-%(id)s.%(ext)s")
     options = {
         "outtmpl": output_template,
-        "format": "best[ext
+        "format": "best",
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "socket_timeout": 25,
+    }
+    with yt_dlp.YoutubeDL(options) as ydl:
+        info = ydl.extract_info(url, download=True)
+        path = ydl.prepare_filename(info)
+        base, _ = os.path.splitext(path)
+        if os.path.exists(base + ".mp4"):
+            path = base + ".mp4"
+    if os.path.getsize(path) > MAX_FILE_SIZE:
+        raise ValueError("FILE_TOO_LARGE")
+    return path, info
+
+@bot.message_handler(func=lambda m: bool(extract_url(m.text or m.caption or "")), content_types=["text", "photo", "video", "document"])
+def handle_video_link(message):
+    if message.chat.type != "private":
+        return
+    chat_id = message.chat.id
+    lang = get_language(chat_id)
+    url = extract_url(message.text or message.caption or "")
+    if not url:
+        return
+
+    status_msg = bot.reply_to(message, TEXT[lang]["working"])
+    workdir = tempfile.mkdtemp(prefix="downloader_")
+    try:
+        path, info = download_media(url, workdir)
+        bot.edit_message_text(TEXT[lang]["choose_format"], chat_id, status_msg.message_id, reply_markup=format_keyboard())
+        pending_downloads[(chat_id, status_msg.message_id)] = {
+            "path": path, "lang": lang, "reply_to": message.message_id, "workdir": workdir
+        }
+    except Exception:
+        if "youtube.com" in url or "youtu.be" in url:
+            bot.edit_message_text(TEXT[lang]["youtube_failed"], chat_id, status_msg.message_id, parse_mode="Markdown")
+        else:
+            bot.edit_message_text(TEXT[lang]["failed"], chat_id, status_msg.message_id)
+        shutil.rmtree(workdir, ignore_errors=True)
+
+@bot.callback_query_handler(func=lambda call: call.data in ("format_video", "format_mp4"))
+def send_downloaded_file(call):
+    chat_id = call.message.chat.id
+    key = (chat_id, call.message.message_id)
+    item = pending_downloads.get(key)
+    if not item:
+        bot.answer_callback_query(call.id, "Muddati tugagan.", show_alert=True)
+        return
+
+    bot.answer_callback_query(call.id, "Yuborilmoqda...")
+    path, lang, reply_id, workdir = item["path"], item["lang"], item["reply_to"], item["workdir"]
+
+    try:
+        bot.edit_message_text(TEXT[lang]["uploading"], chat_id, call.message.message_id)
+        with open(path, "rb") as media:
+            if call.data == "format_video":
+                bot.send_video(
+                    chat_id, 
+                    media, 
+                    reply_to_message_id=reply_id, 
+                    caption=TEXT[lang]["done"], 
+                    timeout=120
+                )
+            else:
+                bot.send_document(
+                    chat_id, 
+                    media, 
+                    reply_to_message_id=reply_id, 
+                    caption=TEXT[lang]["done"], 
+                    timeout=120
+                )
+        bot.send_message(
+            chat_id,
+            TEXT[lang]["promo"],
+            reply_markup=post_download_keyboard()
+        )
+        bot.delete_message(chat_id, call.message.message_id)
+    except Exception:
+        bot.send_message(chat_id, "❌ Xatolik yuz berdi.")
+    finally:
+        pending_downloads.pop(key, None)
+        shutil.rmtree(workdir, ignore_errors=True)
+
+@app.route("/")
+def
