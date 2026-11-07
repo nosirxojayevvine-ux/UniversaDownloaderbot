@@ -32,10 +32,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s"
 )
 
-active_downloads = set()
-active_lock = threading.Lock()
 pending_downloads = {}
-pending_lock = threading.Lock()
 
 def connect_db():
     return sqlite3.connect(DB_PATH, timeout=20)
@@ -308,51 +305,4 @@ def handle_video_link(message):
         if "youtube.com" in url or "youtu.be" in url:
             bot.edit_message_text(TEXT[lang]["youtube_failed"], chat_id, status_msg.message_id, parse_mode="Markdown")
         else:
-            bot.edit_message_text(TEXT[lang]["failed"], chat_id, status_msg.message_id)
-        shutil.rmtree(workdir, ignore_errors=True)
-
-@bot.callback_query_handler(func=lambda call: call.data in ("format_video", "format_mp4"))
-def send_downloaded_file(call):
-    chat_id = call.message.chat.id
-    key = (chat_id, call.message.message_id)
-    item = pending_downloads.get(key)
-    if not item:
-        bot.answer_callback_query(call.id, "Muddati tugagan.", show_alert=True)
-        return
-
-    bot.answer_callback_query(call.id, "Yuborilmoqda...")
-    path, lang, reply_id, workdir = item["path"], item["lang"], item["reply_to"], item["workdir"]
-
-    try:
-        bot.edit_message_text(TEXT[lang]["uploading"], chat_id, call.message.message_id)
-        with open(path, "rb") as media:
-            if call.data == "format_video":
-                bot.send_video(
-                    chat_id, 
-                    media, 
-                    reply_to_message_id=reply_id, 
-                    caption=TEXT[lang]["done"], 
-                    timeout=120
-                )
-            else:
-                bot.send_document(
-                    chat_id, 
-                    media, 
-                    reply_to_message_id=reply_id, 
-                    caption=TEXT[lang]["done"], 
-                    timeout=120
-                )
-        bot.send_message(
-            chat_id,
-            TEXT[lang]["promo"],
-            reply_markup=post_download_keyboard()
-        )
-        bot.delete_message(chat_id, call.message.message_id)
-    except Exception:
-        bot.send_message(chat_id, "❌ Xatolik yuz berdi.")
-    finally:
-        pending_downloads.pop(key, None)
-        shutil.rmtree(workdir, ignore_errors=True)
-
-@app.route("/")
-def
+            bot.edit_message_text(
