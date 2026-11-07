@@ -445,12 +445,4 @@ def broadcast(message):
 
 # =============== VIDEO YUKLASH ===============
 
-URL_RE = re.compile(
-    r"https?://[^\s<>()]+",
-    re.IGNORECASE
-)
-
-
-def extract_url(text):
-    match = URL_RE.search(text or "")
-    if not
+URL_RE = re.
