@@ -14,7 +14,8 @@ from flask import Flask
 import yt_dlp
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "8019481444"))
+ADMIN_USERNAME = "@nosirxojayev"
+ADMIN_ID = 0  # O'zingizning Telegram ID raqamingizni yozing (masalan: 123456789)
 DB_PATH = os.getenv("DB_PATH", "bot.db")
 PORT = int(os.getenv("PORT", "10000"))
 
@@ -75,7 +76,18 @@ def set_language(chat_id, lang):
 TEXT = {
     "uz": {
         "choose": "🌐 Tilni tanlang:",
-        "welcome": "🔥 Assalomu alaykum!\n\n🤖 @DownlanderToVideoBot botiga xush kelibsiz!\n\n📥 Havolani yuboring — formatni tanlang!",
+        "welcome": (
+            "🔥 Assalomu alaykum! @DownlanderToVideoBot botiga xush kelibsiz! "
+            "Men barcha ijtimoiy tarmoqlardan video yuklovchi va musiqalarni topib beruvchi universal yordamchingizman.\n\n"
+            "📥 Imkoniyatlarimiz:\n"
+            "• Instagram (post, reels)\n"
+            "• TikTok (suv belgisiz)\n"
+            "• YouTube va boshqa tarmoqlar\n"
+            "• Qo'shiq nomi, ovozli xabar yoki havola orqali musiqa qidirish\n"
+            "• Videolarni MP4 formatida olish\n\n"
+            "🛡 Shuningdek, botni guruhga qo'shib, kirdi-chiqdi xabarlari va reklama havolalarini avtomatik tozalashingiz mumkin.\n\n"
+            "Havolani yuboring! ❤️"
+        ),
         "group": "➕ Guruhga qo‘shish",
         "language": "🌐 Tilni o‘zgartirish",
         "working": "⏳ Video yuklab olinmoqda...\nIltimos, kuting.",
@@ -83,7 +95,8 @@ TEXT = {
         "done": (
             "✅ Yuklab olindi!\n\n"
             "Yuborgan linkingiz uchun @DownlanderToVideoBot "
-            "nomidan sizga rahmat! ❤️"
+            "nomidan sizga rahmat! ❤️\n"
+            f"👨‍💻 Admin: {ADMIN_USERNAME}"
         ),
         "promo": (
             "🤖 Guruhingizni tartibli saqlang!\n"
@@ -94,7 +107,8 @@ TEXT = {
         "youtube_failed": (
             "❌ **YouTube videoni yuklab bo'lmadi.**\n\n"
             "💡 Buning sababi YouTube o'z xavfsizlik va himoya tizimini "
-            "keskin kuchaytirgani bilan bog'liq. Iltimos, boshqa havola yoki Instagram/TikTok havolasini yuborib ko'ring!"
+            "keskin kuchaytirgani bilan bog'liq. Hozircha bu shorts yoki videoni "
+            "tortib bo'lmayapti. Iltimos, boshqa havola yoki Instagram/TikTok havolasini yuborib ko'ring!"
         ),
         "too_big": "⚠️ Video juda katta (49 MB dan oshadi).",
         "choose_format": "🎬 Qaysi ko‘rinishda yuboray?",
@@ -102,31 +116,31 @@ TEXT = {
     },
     "ru": {
         "choose": "🌐 Выберите язык:",
-        "welcome": "🔥 Здравствуйте!\n\n🤖 Добро пожаловать в @DownlanderToVideoBot!\n\n📥 Отправьте ссылку на видео.",
+        "welcome": "🔥 Здравствуйте! Добро пожаловать в @DownlanderToVideoBot!",
         "group": "➕ Добавить в группу",
         "language": "🌐 Изменить язык",
         "working": "⏳ Загрузка видео...",
         "uploading": "⏳ Отправка...",
-        "done": "✅ Загружено!\n\nСпасибо за вашу ссылку от имени @DownlanderToVideoBot! ❤️",
-        "promo": "🤖 Поддерживайте порядок в группе! Бот удаляет сообщения о входе/выходе и некоторые рекламные ссылки.",
+        "done": f"✅ Загружено!\n\nСпасибо за вашу ссылку! ❤️\n👨‍💻 Admin: {ADMIN_USERNAME}",
+        "promo": "🤖 Поддерживайте порядок в группе!",
         "failed": "❌ Не удалось скачать.",
-        "youtube_failed": "❌ YouTube усилил защиту, не удалось скачать это видео. Попробуйте другую ссылку.",
-        "too_big": "⚠️ Файл слишком большой (более 49 МБ).",
+        "youtube_failed": "❌ YouTube усилил защиту, не удалось скачать это видео.",
+        "too_big": "⚠️ Файл слишком большой.",
         "choose_format": "🎬 Выберите формат:",
         "protect": "🛡 Защита группы."
     },
     "en": {
         "choose": "🌐 Choose your language:",
-        "welcome": "🔥 Hello!\n\n🤖 Welcome to @DownlanderToVideoBot!\n\n📥 Send a video link.",
+        "welcome": "🔥 Hello! Welcome to @DownlanderToVideoBot!",
         "group": "➕ Add to group",
         "language": "🌐 Change language",
         "working": "⏳ Downloading...",
         "uploading": "⏳ Sending...",
-        "done": "✅ Downloaded!\n\nThank you for your link from @DownlanderToVideoBot! ❤️",
-        "promo": "🤖 Keep your group organized! The bot removes join/leave messages and some promotional links.",
+        "done": f"✅ Downloaded!\n\nThank you! ❤️\n👨‍💻 Admin: {ADMIN_USERNAME}",
+        "promo": "🤖 Keep your group organized!",
         "failed": "❌ Could not download.",
-        "youtube_failed": "❌ YouTube has increased security. Could not download this video.",
-        "too_big": "⚠️ File is too large (over 49 MB).",
+        "youtube_failed": "❌ YouTube has increased security.",
+        "too_big": "⚠️ File is too large.",
         "choose_format": "🎬 Choose format:",
         "protect": "🛡 Group protection."
     }
@@ -170,6 +184,39 @@ def start(message):
     save_user(message.chat.id)
     lang = get_language(message.chat.id)
     bot.send_message(message.chat.id, TEXT[lang]["welcome"], reply_markup=main_keyboard(lang))
+
+@bot.message_handler(commands=["stats"])
+def stats_command(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    with connect_db() as con:
+        users_count = con.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        chats_count = con.execute("SELECT COUNT(*) FROM chats").fetchone()[0]
+    bot.reply_to(message, f"📊 **Bot Statistikasi:**\n\n👤 Foydalanuvchilar: {users_count}\n👥 Guruhlar/Kanal: {chats_count}", parse_mode="Markdown")
+
+@bot.message_handler(commands=["send"])
+def send_broadcast(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    text_to_send = message.text.replace("/send", "").strip()
+    if not text_to_send:
+        bot.reply_to(message, "⚠️ Yuborish uchun matn kiriting. Masalan: `/send Assalomu alaykum`", parse_mode="Markdown")
+        return
+    
+    with connect_db() as con:
+        users = con.execute("SELECT chat_id FROM users").fetchall()
+    
+    success = 0
+    failed = 0
+    for u in users:
+        try:
+            bot.send_message(u[0], text_to_send)
+            success += 1
+            time.sleep(0.1)
+        except Exception:
+            failed += 1
+            
+    bot.reply_to(message, f"✅ Xabar yuborildi!\n\nMuvaffaqiyatli: {success}\nXatolik: {failed}")
 
 @bot.callback_query_handler(func=lambda call: call.data == "change_language")
 def change_language(call):
@@ -236,90 +283,4 @@ def download_media(url, workdir):
         base, _ = os.path.splitext(path)
         if os.path.exists(base + ".mp4"):
             path = base + ".mp4"
-    if os.path.getsize(path) > MAX_FILE_SIZE:
-        raise ValueError("FILE_TOO_LARGE")
-    return path, info
-
-@bot.message_handler(func=lambda m: bool(extract_url(m.text or m.caption or "")), content_types=["text", "photo", "video", "document"])
-def handle_video_link(message):
-    if message.chat.type != "private":
-        return
-    chat_id = message.chat.id
-    lang = get_language(chat_id)
-    url = extract_url(message.text or message.caption or "")
-    if not url:
-        return
-
-    status_msg = bot.reply_to(message, TEXT[lang]["working"])
-    workdir = tempfile.mkdtemp(prefix="downloader_")
-    try:
-        path, info = download_media(url, workdir)
-        bot.edit_message_text(TEXT[lang]["choose_format"], chat_id, status_msg.message_id, reply_markup=format_keyboard())
-        pending_downloads[(chat_id, status_msg.message_id)] = {
-            "path": path, "lang": lang, "reply_to": message.message_id, "workdir": workdir
-        }
-    except Exception:
-        if "youtube.com" in url or "youtu.be" in url:
-            bot.edit_message_text(TEXT[lang]["youtube_failed"], chat_id, status_msg.message_id, parse_mode="Markdown")
-        else:
-            bot.edit_message_text(TEXT[lang]["failed"], chat_id, status_msg.message_id)
-        shutil.rmtree(workdir, ignore_errors=True)
-
-pending_downloads = {}
-
-@bot.callback_query_handler(func=lambda call: call.data in ("format_video", "format_mp4"))
-def send_downloaded_file(call):
-    chat_id = call.message.chat.id
-    key = (chat_id, call.message.message_id)
-    item = pending_downloads.get(key)
-    if not item:
-        bot.answer_callback_query(call.id, "Muddati tugagan.", show_alert=True)
-        return
-
-    bot.answer_callback_query(call.id, "Yuborilmoqda...")
-    path, lang, reply_id, workdir = item["path"], item["lang"], item["reply_to"], item["workdir"]
-
-    try:
-        bot.edit_message_text(TEXT[lang]["uploading"], chat_id, call.message.message_id)
-        with open(path, "rb") as media:
-            if call.data == "format_video":
-                bot.send_video(
-                    chat_id, 
-                    media, 
-                    reply_to_message_id=reply_id, 
-                    caption=TEXT[lang]["done"], 
-                    timeout=120
-                )
-            else:
-                bot.send_document(
-                    chat_id, 
-                    media, 
-                    reply_to_message_id=reply_id, 
-                    caption=TEXT[lang]["done"], 
-                    timeout=120
-                )
-        # Guruhga qo'shish tugmasi va reklama matni
-        bot.send_message(
-            chat_id,
-            TEXT[lang]["promo"],
-            reply_markup=post_download_keyboard()
-        )
-        bot.delete_message(chat_id, call.message.message_id)
-    except Exception:
-        bot.send_message(chat_id, "❌ Xatolik yuz berdi.")
-    finally:
-        pending_downloads.pop(key, None)
-        shutil.rmtree(workdir, ignore_errors=True)
-
-@app.route("/")
-def home():
-    return "Bot is running!"
-
-@app.route("/health")
-def health():
-    return {"status": "ok"}
-
-if __name__ == "__main__":
-    setup_db()
-    threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True), daemon=True).start()
-    app.run(host="0.0.0.0", port=PORT)
+    if
