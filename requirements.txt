@@ -1,0 +1,4 @@
+
+pyTelegramBotAPI
+flask
+yt-dlp[default]
