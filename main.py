@@ -33,7 +33,6 @@ logging.basicConfig(
 
 active_downloads = set()
 active_lock = threading.Lock()
-
 pending_downloads = {}
 pending_lock = threading.Lock()
 
@@ -245,8 +244,6 @@ def handle_video_link(message):
         bot.edit_message_text(TEXT[lang]["failed"], chat_id, status_msg.message_id)
         shutil.rmtree(workdir, ignore_errors=True)
 
-pending_downloads = {}
-
 @bot.callback_query_handler(func=lambda call: call.data in ("format_video", "format_mp4"))
 def send_downloaded_file(call):
     chat_id = call.message.chat.id
@@ -278,6 +275,13 @@ def send_downloaded_file(call):
 def home():
     return "Bot is running!"
 
+@app.route("/health")
+def health():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     setup_db()
+    # Telegram botni alohida fonda (thread) ishga tushiramiz
     threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True), daemon=True).start()
+    # Flask asosiy oqimda ishlaydi va Render portini band qilib turadi
+    app.run(host="0.0.0.0", port=PORT)
