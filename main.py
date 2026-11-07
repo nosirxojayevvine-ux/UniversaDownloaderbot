@@ -80,13 +80,21 @@ TEXT = {
         "language": "🌐 Tilni o‘zgartirish",
         "working": "⏳ Video yuklab olinmoqda...\nIltimos, kuting.",
         "uploading": "⏳ Video yuborilmoqda...",
-        "done": "✅ Yuklab olindi!\n\n@DownlanderToVideoBot ❤️",
+        "done": (
+            "✅ Yuklab olindi!\n\n"
+            "Yuborgan linkingiz uchun @DownlanderToVideoBot "
+            "nomidan sizga rahmat! ❤️"
+        ),
+        "promo": (
+            "🤖 Guruhingizni tartibli saqlang!\n"
+            "Kirdi-chiqdi xabarlari va ayrim reklama "
+            "havolalarini avtomatik o‘chiradi."
+        ),
         "failed": "❌ Videoni yuklab bo‘lmadi. Havolani tekshiring.",
         "youtube_failed": (
             "❌ **YouTube videoni yuklab bo'lmadi.**\n\n"
             "💡 Buning sababi YouTube o'z xavfsizlik va himoya tizimini "
-            "keskin kuchaytirgani bilan bog'liq. Hozircha bu shorts yoki videoni "
-            "tortib bo'lmayapti. Iltimos, boshqa havola yoki Instagram/TikTok havolasini yuborib ko'ring!"
+            "keskin kuchaytirgani bilan bog'liq. Iltimos, boshqa havola yoki Instagram/TikTok havolasini yuborib ko'ring!"
         ),
         "too_big": "⚠️ Video juda katta (49 MB dan oshadi).",
         "choose_format": "🎬 Qaysi ko‘rinishda yuboray?",
@@ -99,7 +107,8 @@ TEXT = {
         "language": "🌐 Изменить язык",
         "working": "⏳ Загрузка видео...",
         "uploading": "⏳ Отправка...",
-        "done": "✅ Загружено!\n\n@DownlanderToVideoBot ❤️",
+        "done": "✅ Загружено!\n\nСпасибо за вашу ссылку от имени @DownlanderToVideoBot! ❤️",
+        "promo": "🤖 Поддерживайте порядок в группе! Бот удаляет сообщения о входе/выходе и некоторые рекламные ссылки.",
         "failed": "❌ Не удалось скачать.",
         "youtube_failed": "❌ YouTube усилил защиту, не удалось скачать это видео. Попробуйте другую ссылку.",
         "too_big": "⚠️ Файл слишком большой (более 49 МБ).",
@@ -113,7 +122,8 @@ TEXT = {
         "language": "🌐 Change language",
         "working": "⏳ Downloading...",
         "uploading": "⏳ Sending...",
-        "done": "✅ Downloaded!\n\n@DownlanderToVideoBot ❤️",
+        "done": "✅ Downloaded!\n\nThank you for your link from @DownlanderToVideoBot! ❤️",
+        "promo": "🤖 Keep your group organized! The bot removes join/leave messages and some promotional links.",
         "failed": "❌ Could not download.",
         "youtube_failed": "❌ YouTube has increased security. Could not download this video.",
         "too_big": "⚠️ File is too large (over 49 MB).",
@@ -248,8 +258,7 @@ def handle_video_link(message):
         pending_downloads[(chat_id, status_msg.message_id)] = {
             "path": path, "lang": lang, "reply_to": message.message_id, "workdir": workdir
         }
-    except Exception as e:
-        # Agar havola YouTube'ga tegishli bo'lsa maxsus xabar chiqarish
+    except Exception:
         if "youtube.com" in url or "youtu.be" in url:
             bot.edit_message_text(TEXT[lang]["youtube_failed"], chat_id, status_msg.message_id, parse_mode="Markdown")
         else:
@@ -274,11 +283,28 @@ def send_downloaded_file(call):
         bot.edit_message_text(TEXT[lang]["uploading"], chat_id, call.message.message_id)
         with open(path, "rb") as media:
             if call.data == "format_video":
-                bot.send_video(chat_id, media, reply_to_message_id=reply_id, caption=TEXT[lang]["done"], timeout=120)
+                bot.send_video(
+                    chat_id, 
+                    media, 
+                    reply_to_message_id=reply_id, 
+                    caption=TEXT[lang]["done"], 
+                    timeout=120
+                )
             else:
-                bot.send_document(chat_id, media, reply_to_message_id=reply_id, caption=TEXT[lang]["done"], timeout=120)
-        bot.send_message(chat_id, TEXT[lang]["promo"], reply_markup=post_download_keyboard())
-        bot.edit_message_text("✅ Yuklab olindi!", chat_id, call.message.message_id)
+                bot.send_document(
+                    chat_id, 
+                    media, 
+                    reply_to_message_id=reply_id, 
+                    caption=TEXT[lang]["done"], 
+                    timeout=120
+                )
+        # Guruhga qo'shish tugmasi va reklama matni
+        bot.send_message(
+            chat_id,
+            TEXT[lang]["promo"],
+            reply_markup=post_download_keyboard()
+        )
+        bot.delete_message(chat_id, call.message.message_id)
     except Exception:
         bot.send_message(chat_id, "❌ Xatolik yuz berdi.")
     finally:
