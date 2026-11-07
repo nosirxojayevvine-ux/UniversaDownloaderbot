@@ -15,7 +15,7 @@ import yt_dlp
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_USERNAME = "@nosirxojayev"
-ADMIN_ID = 8019481444  # Sizning Telegram ID raqamingiz
+ADMIN_ID = 8019481444
 DB_PATH = os.getenv("DB_PATH", "bot.db")
 PORT = int(os.getenv("PORT", "10000"))
 
@@ -192,4 +192,82 @@ def stats_command(message):
     with connect_db() as con:
         users_count = con.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         chats_count = con.execute("SELECT COUNT(*) FROM chats").fetchone()[0]
-    bot.reply_to(message, f"📊 **Bot Statistikasi:**\n\n👤 Foydalanuvchilar: {users_count}\n👥 Guruh
+    bot.reply_to(message, f"📊 Bot Statistikasi:\n\n👤 Foydalanuvchilar: {users_count}\n👥 Guruhlar: {chats_count}")
+
+@bot.message_handler(commands=["send"])
+def send_broadcast(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    text_to_send = message.text.replace("/send", "").strip()
+    if not text_to_send:
+        bot.reply_to(message, "⚠️ Yuborish uchun matn kiriting. Masalan: `/send Assalomu alaykum`", parse_mode="Markdown")
+        return
+    
+    with connect_db() as con:
+        users = con.execute("SELECT chat_id FROM users").fetchall()
+    
+    success = 0
+    failed = 0
+    for u in users:
+        try:
+            bot.send_message(u[0], text_to_send)
+            success += 1
+            time.sleep(0.1)
+        except Exception:
+            failed += 1
+            
+    bot.reply_to(message, f"✅ Xabar yuborildi!\n\nMuvaffaqiyatli: {success}\nXatolik: {failed}")
+
+@bot.callback_query_handler(func=lambda call: call.data == "change_language")
+def change_language(call):
+    bot.answer_callback_query(call.id)
+    bot.send_message(call.message.chat.id, "🌐 Tilni tanlang:", reply_markup=language_keyboard())
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("lang_"))
+def select_language(call):
+    lang = call.data.replace("lang_", "")
+    if lang not in TEXT:
+        return
+    save_user(call.message.chat.id)
+    set_language(call.message.chat.id, lang)
+    bot.answer_callback_query(call.id, "✅")
+    bot.send_message(call.message.chat.id, TEXT[lang]["welcome"], reply_markup=main_keyboard(lang))
+
+URL_RE = re.compile(r"https?://[^\s<>()]+", re.IGNORECASE)
+
+def extract_url(text):
+    match = URL_RE.search(text or "")
+    if not match:
+        return None
+    return match.group(0).rstrip(".,!?)]}")
+
+def download_youtube_via_api(url, workdir):
+    api_url = "https://co.wuk.sh/api/json"
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    data = {"url": url, "vQuality": "720"}
+    response = requests.post(api_url, json=data, headers=headers, timeout=30)
+    res_json = response.json()
+    
+    if res_json.get("status") in ["redirect", "stream"]:
+        download_link = res_json.get("url")
+    elif res_json.get("status") == "picker":
+        download_link = res_json.get("picker")[0].get("url")
+    else:
+        raise Exception("API YouTube havolasini o'qiy olmadi")
+        
+    file_path = os.path.join(workdir, "youtube_video.mp4")
+    with requests.get(download_link, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        with open(file_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+    return file_path, {"title": "YouTube Video"}
+
+def download_media(url, workdir):
+    if "youtube.com" in url or "youtu.be" in url:
+        return download_youtube_via_api(url, workdir)
+
+    output_template = os.path.join(workdir, "%(title).80s-%(id)s.%(ext)s")
+    options = {
+        "outtmpl": output_template,
+        "format": "best[ext
