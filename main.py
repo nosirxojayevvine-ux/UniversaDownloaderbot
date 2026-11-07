@@ -82,6 +82,12 @@ TEXT = {
         "uploading": "⏳ Video yuborilmoqda...",
         "done": "✅ Yuklab olindi!\n\n@DownlanderToVideoBot ❤️",
         "failed": "❌ Videoni yuklab bo‘lmadi. Havolani tekshiring.",
+        "youtube_failed": (
+            "❌ **YouTube videoni yuklab bo'lmadi.**\n\n"
+            "💡 Buning sababi YouTube o'z xavfsizlik va himoya tizimini "
+            "keskin kuchaytirgani bilan bog'liq. Hozircha bu shorts yoki videoni "
+            "tortib bo'lmayapti. Iltimos, boshqa havola yoki Instagram/TikTok havolasini yuborib ko'ring!"
+        ),
         "too_big": "⚠️ Video juda katta (49 MB dan oshadi).",
         "choose_format": "🎬 Qaysi ko‘rinishda yuboray?",
         "protect": "🛡 Guruhni tartibli saqlash rejimi."
@@ -95,6 +101,7 @@ TEXT = {
         "uploading": "⏳ Отправка...",
         "done": "✅ Загружено!\n\n@DownlanderToVideoBot ❤️",
         "failed": "❌ Не удалось скачать.",
+        "youtube_failed": "❌ YouTube усилил защиту, не удалось скачать это видео. Попробуйте другую ссылку.",
         "too_big": "⚠️ Файл слишком большой (более 49 МБ).",
         "choose_format": "🎬 Выберите формат:",
         "protect": "🛡 Защита группы."
@@ -108,6 +115,7 @@ TEXT = {
         "uploading": "⏳ Sending...",
         "done": "✅ Downloaded!\n\n@DownlanderToVideoBot ❤️",
         "failed": "❌ Could not download.",
+        "youtube_failed": "❌ YouTube has increased security. Could not download this video.",
         "too_big": "⚠️ File is too large (over 49 MB).",
         "choose_format": "🎬 Choose format:",
         "protect": "🛡 Group protection."
@@ -240,9 +248,15 @@ def handle_video_link(message):
         pending_downloads[(chat_id, status_msg.message_id)] = {
             "path": path, "lang": lang, "reply_to": message.message_id, "workdir": workdir
         }
-    except Exception:
-        bot.edit_message_text(TEXT[lang]["failed"], chat_id, status_msg.message_id)
+    except Exception as e:
+        # Agar havola YouTube'ga tegishli bo'lsa maxsus xabar chiqarish
+        if "youtube.com" in url or "youtu.be" in url:
+            bot.edit_message_text(TEXT[lang]["youtube_failed"], chat_id, status_msg.message_id, parse_mode="Markdown")
+        else:
+            bot.edit_message_text(TEXT[lang]["failed"], chat_id, status_msg.message_id)
         shutil.rmtree(workdir, ignore_errors=True)
+
+pending_downloads = {}
 
 @bot.callback_query_handler(func=lambda call: call.data in ("format_video", "format_mp4"))
 def send_downloaded_file(call):
@@ -281,7 +295,5 @@ def health():
 
 if __name__ == "__main__":
     setup_db()
-    # Telegram botni alohida fonda (thread) ishga tushiramiz
     threading.Thread(target=lambda: bot.infinity_polling(skip_pending=True), daemon=True).start()
-    # Flask asosiy oqimda ishlaydi va Render portini band qilib turadi
     app.run(host="0.0.0.0", port=PORT)
